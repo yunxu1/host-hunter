@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -37,6 +38,7 @@ var(
 	outfile string
 	wg sync.WaitGroup
 	code string
+	proxy string
 )
 
 func init(){
@@ -53,6 +55,7 @@ func init(){
 	flag.BoolVar(&redirect, "redirect", false, "follow 30x redirect")
 	flag.StringVar(&outfile,"output","hostinfo.txt","output result to file")
 	flag.StringVar(&code,"code","200","http status code filter options eg:200,201,500 or 200")
+	flag.StringVar(&proxy,"proxy","","use a proxy to connect to the target URL")
 }
 
 
@@ -87,6 +90,13 @@ func HostVerify(hostip HostIP) {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
+	//设置代理
+	if proxy!=""{
+
+		tr.Proxy=getProxy(proxy)
+
+	}
+
 
 	client:=&http.Client{
 		Timeout:time.Duration(timeout)*time.Second,
@@ -108,14 +118,21 @@ func HostVerify(hostip HostIP) {
 
 		target=fmt.Sprintf("%s://%s:%d",hostip.Schema,hostip.Address,hostip.Port)
 	}
+
 	log.Printf("请求URL:%s\n",target)
+
 	req,err:=http.NewRequest(http.MethodGet,target,nil)
+
+
 	if err!=nil{
 		log.Printf("error:%s\n",err)
 		return
 	}
 
+	//set host
 	req.Host=hostip.Host
+
+	req.Header.Set("User-Agent","Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.70 Safari/537.36")
 	req.Header.Set("Connection","close") // 解决 too many open files
 	resp,err:=client.Do(req)
 
@@ -177,6 +194,21 @@ func HostVerify(hostip HostIP) {
 
 
 }
+
+func getProxy(proxy string)func(*http.Request) (*url.URL, error) {
+
+	proxyurl,err:=url.Parse(proxy)
+
+	if err!=nil{
+		fmt.Println("proxy url parse fail:%s",proxyurl)
+		os.Exit(0)
+	}
+
+	return http.ProxyURL(proxyurl)
+
+}
+
+
 //所有协议 ip 和 host组合成任务列表
 func MakeTask(hostList []string , addressList []string){
 	for _,host :=range hostList {

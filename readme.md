@@ -34,6 +34,9 @@ go build
     	timeout default 3 (default 3)
   -code string # 显示设置的http响应码,默认只显示结果为200的状态码，多个状态码逗号分隔
     	http status code filter options eg:200,201,500 or 200 (default "200")
+    	
+  -proxy string #设置代理 eg:http://xxx:80
+        use a proxy to connect to the target URL
 ```
 
 
@@ -62,7 +65,11 @@ go build
 ./hosthunter -ip 192.168.1.0/24,192.168.2.2 -host w.xxx.com
 ```
 
+###### 指定IP和host扫描 筛选200和302状态:
 
+```shell
+./hosthunter -ip 192.168.1.0/24,192.168.2.2 -host w.xxx.com -code 200,302
+```
 
 ###### 回显字段:
 
