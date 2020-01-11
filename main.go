@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/gogf/gf/os/grpool"
 	"io/ioutil"
 	"log"
 	"net"
@@ -28,7 +29,7 @@ var(
 	thread int
 	addressList []string
 	hostList []string
-	threadCh chan bool
+	threadPool *grpool.Pool
 	tasklist []HostIP
 	timeout int
 	port string
@@ -36,7 +37,6 @@ var(
 	redirect bool
 	flog *os.File
 	outfile string
-	wg sync.WaitGroup
 	code string
 	proxy string
 )
@@ -67,11 +67,6 @@ type HostIP struct {
 }
 
 func HostVerify(hostip HostIP) {
-
-	defer func() {
-		<-threadCh
-		wg.Done()
-	}()
 	var target string
 	var titleinf string=""
 
@@ -225,11 +220,15 @@ func MakeTask(hostList []string , addressList []string){
 }
 //多线程扫描
 func HostScan(){
+	wg:=sync.WaitGroup{}
 	for _,task :=range tasklist{
 
-		threadCh<-true
 		wg.Add(1)
-		go HostVerify(task)
+		v:=task
+		threadPool.Add(func() {
+			HostVerify(v)
+			wg.Done()
+		})
 
 	}
 	wg.Wait()
@@ -284,6 +283,7 @@ func main() {
 
 	MakeTask(hostList,addressList) //加载任务列表
 	//设置线程数
-	threadCh=make(chan bool,thread)
+
+	threadPool=grpool.New(thread)
 	HostScan();
 }
